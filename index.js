@@ -4,9 +4,18 @@ const morgan = require('morgan')
 const cors = require('cors')
 const mongoose = require('mongoose')
 const authRouter = require('./routes/auth')
+
 const app = express()
 
-const {NODE_ENV, CLIENT_URL, PORT} = process.env
+const {NODE_ENV, CLIENT_URL, PORT, MONGODB_URI} = process.env
+
+// connect to mongodb
+mongoose
+  .connect(MONGODB_URI)
+  .then(() => {
+    console.log(`MongoDB connected ${MONGODB_URI}`)
+  })
+  .catch((err) => console.log(`MongoDB connection error`))
 
 // app middleware
 app.use(morgan('dev'))
@@ -23,5 +32,5 @@ app.use('/api', authRouter)
 const port = PORT || 8000
 
 app.listen(port, () => {
-  console.log(`Server running http://localhost:${port}/api`)
+  console.log(`API running http://localhost:${port}/api`)
 })
