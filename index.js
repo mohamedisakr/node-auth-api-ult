@@ -1,12 +1,22 @@
+require('dotenv').config()
 const express = require('express')
+const morgan = require('morgan')
+const cors = require('cors')
+const mongoose = require('mongoose')
 const authRouter = require('./routes/auth')
 const app = express()
 
-app.use('/api', authRouter)
+// app middleware
+app.use(morgan('dev'))
+app.use(express.json())
+app.use(express.urlencoded({extended: true}))
+// app.use(express.bodyParser())
+process.env.NODE_ENV === 'development'
+  ? app.use(cors({origin: `http://localhost:3000`}))
+  : app.use(cors())
 
-app.get('/api', (req, res) => {
-  res.json({data: 'you hit home endpoint'})
-})
+// middleware
+app.use('/api', authRouter)
 
 const port = process.env.PORT || 8000
 
