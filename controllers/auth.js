@@ -1,6 +1,7 @@
-const User = require('../models/user')
 const {sign} = require('jsonwebtoken')
+const {createTransport} = require('nodemailer')
 const sendgridMail = require('@sendgrid/mail')
+const User = require('../models/user')
 
 const {
     SENDGRID_API_KEY,
@@ -8,7 +9,22 @@ const {
     JWT_EXPIRE_IN,
     EMAIL_FROM,
     CLIENT_URL,
+    NODE_MAILER_EMAIL,
+    NODE_MAILER_DISPLAY_NAME,
+    NODE_MAILER_PASSWORD,
+    NODE_MAILER_HOST,
+    NODE_MAILER_PORT,
 } = process.env
+
+const transporter = createTransport({
+    host: NODE_MAILER_HOST,
+    port: NODE_MAILER_PORT,
+    secure: false, // true for 465, false for other ports
+    auth: {
+        user: NODE_MAILER_EMAIL, // generated ethereal user
+        pass: NODE_MAILER_PASSWORD, // generated ethereal password
+    },
+})
 
 sendgridMail.setApiKey(SENDGRID_API_KEY)
 
@@ -25,7 +41,7 @@ exports.signup = async (req, res) => {
     })
 
     const emailMessage = {
-        from: EMAIL_FROM,
+        from: NODE_MAILER_EMAIL, //EMAIL_FROM,
         to: email,
         subject: `Activate your account`,
         html: `
@@ -36,19 +52,62 @@ exports.signup = async (req, res) => {
         `,
     }
 
-    sendgridMail
-        .send(emailMessage)
-        .then((sent) => {
-            // console.log(sent)
+    transporter.sendMail(emailMessage, function (error, info) {
+        if (error) {
+            console.log(error)
+            return res.json({message: err.message})
+            // done(error)
+        } else {
+            console.log('Email sent: ' + info.response)
             return res.json({
                 message: `Confirmation email has been sent to ${email}. Follow the instructions to activate your account`,
-            }).cat
-        })
+            })
+            // done(null, info)
+        }
+    })
+
+    // const mailOptions = {
+    //     from: NODE_MAILER_EMAIL,
+    //     to: to,
+    //     subject: subject,
+    //     html: body,
+    //   }
+
+    /*
+    sendgridMail
+        .send(emailMessage)
+        .then(
+            (sent) => {
+                // console.log(sent)
+                return res.json({
+                    message: `Confirmation email has been sent to ${email}. Follow the instructions to activate your account`,
+                })
+            },
+            (error) => {
+                console.error(error)
+                if (error.response) {
+                    console.error(error.response.body)
+                }
+            },
+        )
         .catch((err) => {
             // console.log(err)
             return res.json({message: err.message})
         })
+        */
 }
+// .then((sent) => {
+//     // console.log(sent)
+//     return res.json({
+//         message: `Confirmation email has been sent to ${email}. Follow the instructions to activate your account`,
+//     })
+// })
+// .catch((err) => {
+//     // console.log(err)
+//     return res.json({message: err.message})
+// })
+
+//-----------------------------------
 
 // exports.signup = async (req, res) => {
 //     console.log(`req.body ${JSON.stringify(req.body)}`)
