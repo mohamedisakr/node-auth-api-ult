@@ -6,7 +6,9 @@ const User = require('../models/user')
 const {
   SENDGRID_API_KEY,
   JWT_ACCOUNT_ACTIVATION,
+  JWT_SECRET,
   JWT_EXPIRE_IN,
+  JWT_ACTIVATION_EXPIRE_IN,
   EMAIL_FROM,
   CLIENT_URL,
   NODE_MAILER_EMAIL,
@@ -37,7 +39,7 @@ exports.signup = async (req, res) => {
   }
 
   const token = sign({name, email, password}, JWT_ACCOUNT_ACTIVATION, {
-    expiresIn: JWT_EXPIRE_IN,
+    expiresIn: JWT_ACTIVATION_EXPIRE_IN,
   })
 
   const emailMessage = {
@@ -57,35 +59,36 @@ exports.signup = async (req, res) => {
       console.log(error)
       return res.json({message: err.message})
     } else {
-      console.log('Email sent: ' + info.response)
+      console.log(`Email sent: ${info.response}`)
       return res.json({
         message: `Confirmation email has been sent to ${email}. Follow the instructions to activate your account`,
       })
     }
   })
+}
 
-  /*
-    sendgridMail
-        .send(emailMessage)
-        .then(
-            (sent) => {
-                // console.log(sent)
-                return res.json({
-                    message: `Confirmation email has been sent to ${email}. Follow the instructions to activate your account`,
-                })
-            },
-            (error) => {
-                console.error(error)
-                if (error.response) {
-                    console.error(error.response.body)
-                }
-            },
-        )
-        .catch((err) => {
-            // console.log(err)
-            return res.json({message: err.message})
-        })
-        */
+exports.signin = (req, res) => {
+  const {email, password} = req.body
+  const userFound = User.findOne({email}).exec((err, user) => {
+    if (err || !user) {
+      console.log(err)
+      return res
+        .status(400)
+        .json({message: 'User does not exist. Please signup'})
+    }
+
+    if (!user.authenticate(password)) {
+      return res.status(400).json({message: 'Invalid credentials'})
+    }
+
+    const token = sign({_id: user._id}, JWT_SECRET, {
+      expiresIn: JWT_EXPIRE_IN,
+    })
+
+    const {_id, name, email, role} = user
+
+    return res.status(200).json({token, user: {_id, name, email, role}})
+  })
 }
 
 exports.activate = (req, res) => {
@@ -119,6 +122,31 @@ exports.activate = (req, res) => {
     })
   })
 }
+
+/*
+    sendgridMail
+        .send(emailMessage)
+        .then(
+            (sent) => {
+                // console.log(sent)
+                return res.json({
+                    message: `Confirmation email has been sent to ${email}. Follow the instructions to activate your account`,
+                })
+            },
+            (error) => {
+                console.error(error)
+                if (error.response) {
+                    console.error(error.response.body)
+                }
+            },
+        )
+        .catch((err) => {
+            // console.log(err)
+            return res.json({message: err.message})
+        })
+        */
+
+// --------------------------------
 
 // .then((sent) => {
 //     // console.log(sent)
