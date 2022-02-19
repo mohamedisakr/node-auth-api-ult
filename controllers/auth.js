@@ -1,8 +1,8 @@
-const jwtExpress = require('express-jwt')
-const {sign, verify, decode} = require('jsonwebtoken')
-const {createTransport} = require('nodemailer')
-const sendgridMail = require('@sendgrid/mail')
-const User = require('../models/user')
+const jwtExpress = require("express-jwt")
+const {sign, verify, decode} = require("jsonwebtoken")
+const {createTransport} = require("nodemailer")
+const sendgridMail = require("@sendgrid/mail")
+const User = require("../models/user")
 
 const {
   SENDGRID_API_KEY,
@@ -10,6 +10,7 @@ const {
   JWT_SECRET,
   JWT_EXPIRE_IN,
   JWT_ACTIVATION_EXPIRE_IN,
+  JWT_RESET_PASSWORD,
   EMAIL_FROM,
   CLIENT_URL,
   NODE_MAILER_EMAIL,
@@ -36,7 +37,7 @@ exports.signup = async (req, res) => {
   const foundByEmail = await User.findOne({email}).exec()
 
   if (foundByEmail) {
-    return res.status(400).json({message: 'EMail already exists'})
+    return res.status(400).json({message: "EMail already exists"})
   }
 
   const token = sign({name, email, password}, JWT_ACCOUNT_ACTIVATION, {
@@ -75,11 +76,11 @@ exports.signin = (req, res) => {
       console.log(err)
       return res
         .status(400)
-        .json({message: 'User does not exist. Please signup'})
+        .json({message: "User does not exist. Please signup"})
     }
 
     if (!user.authenticate(password)) {
-      return res.status(400).json({message: 'Invalid credentials'})
+      return res.status(400).json({message: "Invalid credentials"})
     }
 
     const token = sign({_id: user._id}, JWT_SECRET, {
@@ -97,7 +98,7 @@ exports.activate = (req, res) => {
 
   if (!token) {
     return res.status(401).json({
-      message: 'Something wrong, please try again',
+      message: "Something wrong, please try again",
     })
   }
 
@@ -115,33 +116,75 @@ exports.activate = (req, res) => {
       if (err) {
         console.log(`signup errer: ${err}`)
         return res.status(401).json({
-          message: 'Error saving user. Please signup again',
+          message: "Error saving user. Please signup again",
         })
       }
 
-      return res.status(201).json({message: 'Signup success, please signin'})
+      return res.status(201).json({message: "Signup success, please signin"})
     })
   })
 }
 
-exports.requireSignin = jwtExpress({secret: JWT_SECRET, algorithms: ['HS256']})
+exports.requireSignin = jwtExpress({secret: JWT_SECRET, algorithms: ["HS256"]})
 
 exports.adminMiddleware = (req, res, next) => {
   const {_id} = req.user
   User.findById({_id}).exec((err, user) => {
     if (err || !user) {
       console.log(err)
-      return res.status(400).json({message: 'User not found'})
+      return res.status(400).json({message: "User not found"})
     }
 
-    if (user.role !== 'admin') {
-      return res.status(400).json({message: 'Admin resource. Access denied'})
+    if (user.role !== "admin") {
+      return res.status(400).json({message: "Admin resource. Access denied"})
     }
 
     req.profile = user
     next()
   })
 }
+
+exports.forgotPassword = (req, res) => {
+  const {email} = req.body
+
+  User.findOne({email}).exec((err, user) => {
+    if (err || !user) {
+      console.log(err)
+      return res.status(400).json({message: "User does't exist"})
+    }
+
+    const token = sign({_id: user._id}, JWT_RESET_PASSWORD, {
+      expiresIn: JWT_ACTIVATION_EXPIRE_IN,
+    })
+
+    const emailMessage = {
+      from: NODE_MAILER_EMAIL, //EMAIL_FROM,
+      to: email,
+      subject: `Password Reset`,
+      html: `
+              <h2>Please use the following link to reset your password</h2>
+              <p>${CLIENT_URL}/auth/password/reset/${token}</p>
+              <hr/>
+              <p>This email may contain sensetive information</p>
+          `,
+    }
+
+    transporter.sendMail(emailMessage, function (error, info) {
+      if (error) {
+        console.log(error)
+        return res.status(400).json({message: err.message})
+      } else {
+        console.log(`Email sent: ${info.response}`)
+        return res.json({
+          message: `Password Reset email has been sent to ${email}. Follow the instructions to reset your password`,
+        })
+      }
+    })
+  })
+}
+
+exports.resetPassword = (req, res) => {}
+
 /*
     sendgridMail
         .send(emailMessage)
