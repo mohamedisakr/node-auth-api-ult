@@ -4,6 +4,7 @@ const morgan = require('morgan')
 const cors = require('cors')
 const mongoose = require('mongoose')
 const authRouter = require('./routes/auth')
+const userRouter = require('./routes/user')
 
 const app = express()
 
@@ -28,6 +29,7 @@ NODE_ENV === 'development'
 
 // middleware
 app.use('/api', authRouter)
+app.use('/api', userRouter)
 
 const port = PORT || 8000
 
