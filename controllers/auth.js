@@ -126,6 +126,22 @@ exports.activate = (req, res) => {
 
 exports.requireSignin = jwtExpress({secret: JWT_SECRET, algorithms: ['HS256']})
 
+exports.adminMiddleware = (req, res, next) => {
+  const {_id} = req.user
+  User.findById({_id}).exec((err, user) => {
+    if (err || !user) {
+      console.log(err)
+      return res.status(400).json({message: 'User not found'})
+    }
+
+    if (user.role !== 'admin') {
+      return res.status(400).json({message: 'Admin resource. Access denied'})
+    }
+
+    req.profile = user
+    next()
+  })
+}
 /*
     sendgridMail
         .send(emailMessage)
