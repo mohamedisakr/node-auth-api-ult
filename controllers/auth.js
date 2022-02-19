@@ -1,3 +1,4 @@
+const jwtExpress = require('express-jwt')
 const {sign, verify, decode} = require('jsonwebtoken')
 const {createTransport} = require('nodemailer')
 const sendgridMail = require('@sendgrid/mail')
@@ -122,6 +123,8 @@ exports.activate = (req, res) => {
     })
   })
 }
+
+exports.requireSignin = jwtExpress({secret: JWT_SECRET, algorithms: ['HS256']})
 
 /*
     sendgridMail
