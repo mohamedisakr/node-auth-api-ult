@@ -157,33 +157,76 @@ exports.forgotPassword = (req, res) => {
       expiresIn: JWT_ACTIVATION_EXPIRE_IN,
     })
 
-    const emailMessage = {
-      from: NODE_MAILER_EMAIL, //EMAIL_FROM,
-      to: email,
-      subject: `Password Reset`,
-      html: `
+    return user.updateOne({resetPasswordLink: token}, (err, success) => {
+      if (err) {
+        console.log(err)
+        return res.status(400).json({message: "Forgot password error"})
+      } else {
+        const emailMessage = {
+          from: NODE_MAILER_EMAIL, //EMAIL_FROM,
+          to: email,
+          subject: `Password Reset`,
+          html: `
               <h2>Please use the following link to reset your password</h2>
               <p>${CLIENT_URL}/auth/password/reset/${token}</p>
               <hr/>
               <p>This email may contain sensetive information</p>
           `,
-    }
+        }
 
-    transporter.sendMail(emailMessage, function (error, info) {
-      if (error) {
-        console.log(error)
-        return res.status(400).json({message: err.message})
-      } else {
-        console.log(`Email sent: ${info.response}`)
-        return res.json({
-          message: `Password Reset email has been sent to ${email}. Follow the instructions to reset your password`,
+        transporter.sendMail(emailMessage, function (error, info) {
+          if (error) {
+            console.log(error)
+            return res.status(400).json({message: err.message})
+          } else {
+            console.log(`Email sent: ${info.response}`)
+            return res.json({
+              message: `Password Reset email has been sent to ${email}. Follow the instructions to reset your password`,
+            })
+          }
         })
       }
     })
   })
 }
 
-exports.resetPassword = (req, res) => {}
+exports.resetPassword = (req, res) => {
+  const {resetPasswordLink, newPassword} = req.body
+
+  verify(resetPasswordLink, JWT_RESET_PASSWORD, (err, decoded) => {
+    if (err) {
+      console.log(`reset password err: ${err}`)
+      return res
+        .status(401)
+        .json({message: `Expire link, please reset your password again`})
+    }
+
+    User.findOne({resetPasswordLink}).exec((err, user) => {
+      if (err || !user) {
+        console.log(`reset password err: ${err}`)
+        return res
+          .status(401)
+          .json({message: `Something went wrong. Try again.`})
+      }
+
+      // const updatedFields = {password: newPassword, resetPasswordLink: ""}
+      // user = {...user, ...updatedFields}
+
+      user.password = newPassword
+      user.resetPasswordLink = ""
+
+      user.save((err, result) => {
+        if (err) {
+          console.log(`reset password err: ${err}`)
+          return res.status(401).json({message: `Reset user password failed`})
+        }
+        return res
+          .status(200)
+          .json({message: `Password Reset. Please login with new password`})
+      })
+    })
+  })
+}
 
 /*
     sendgridMail
