@@ -174,11 +174,12 @@ exports.forgotPassword = (req, res) => {
           `,
         }
 
-        transporter.sendMail(emailMessage, function (error, info) {
-          if (error) {
-            console.log(error)
+        transporter.sendMail(emailMessage, function (err, info) {
+          if (err) {
+            console.log(`err: ${err}`)
             return res.status(400).json({message: err.message})
           } else {
+            console.log(`info: ${JSON.stringify(info)}`)
             console.log(`Email sent: ${info.response}`)
             return res.json({
               message: `Password Reset email has been sent to ${email}. Follow the instructions to reset your password`,
