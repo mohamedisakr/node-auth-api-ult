@@ -153,7 +153,7 @@ exports.forgotPassword = (req, res) => {
       return res.status(400).json({message: "User does't exist"})
     }
 
-    const token = sign({_id: user._id}, JWT_RESET_PASSWORD, {
+    const token = sign({_id: user._id, name: user.name}, JWT_RESET_PASSWORD, {
       expiresIn: JWT_ACTIVATION_EXPIRE_IN,
     })
 
